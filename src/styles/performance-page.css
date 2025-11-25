@@ -1,13 +1,30 @@
-/* Add to performance-page.css */
+/* performance-page.css consistent with provided dashboard style */
+
+/* Page container */
 .performance-page {
     padding: 20px;
+    background-color: #f9fafb; /* Very light gray */
+    font-family: Arial, sans-serif;
+    color: #1f2937; /* Dark gray text */
 }
 
+/* Date range filters and general spacing */
+.filters {
+    margin-bottom: 20px;
+}
+
+/* Overall and individual performance sections */
 .overall-performance,
 .individual-performance {
     margin-bottom: 40px;
+    background-color: #ffffff; /* White background */
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+    color: #1f2937;
 }
 
+/* Stats area (temporarily keep if used) */
 .stats {
     display: flex;
     gap: 20px;
@@ -19,10 +36,12 @@
     font-weight: bold;
 }
 
+/* Chart containers */
 .chart-container {
     margin-top: 20px;
 }
 
+/* Dish selection styles */
 .dish-selector {
     margin-bottom: 20px;
 }
@@ -32,26 +51,7 @@
     gap: 20px;
 }
 
-/* Add to performance-page.css */
-.filters {
-    margin-bottom: 20px;
-}
-
-.frequent-dishes {
-    margin-top: 40px;
-}
-
-.frequent-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.frequent-item {
-    font-size: 16px;
-}
-
-/* Add to performance-page.css */
+/* Checkbox group styling */
 .checkbox-group {
     display: flex;
     flex-wrap: wrap;
@@ -62,8 +62,17 @@
     display: flex;
     align-items: center;
     gap: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #374151; /* medium dark gray */
 }
 
+.checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+}
+
+/* Leaderboards container and items */
 .leaderboards {
     display: flex;
     gap: 40px;
@@ -72,11 +81,17 @@
 
 .leaderboard {
     flex: 1;
+    background-color: #ffffff;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+    color: #1f2937;
 }
 
 .leaderboard-list {
     list-style: none;
     padding: 0;
+    margin: 0;
 }
 
 .leaderboard-item {
@@ -84,9 +99,141 @@
     justify-content: space-between;
     padding: 5px 0;
     border-bottom: 1px solid #ddd;
+    color: #374151;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.leaderboard-item:last-child {
+    border-bottom: none;
 }
 
 .rank {
     font-weight: bold;
     margin-right: 10px;
+    color: #6b7280; /* subtle gray */
 }
+
+/* Summary cards consistent with dashboard style */
+.summary-cards {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    margin-bottom: 20px;
+}
+
+.summary-card {
+    background-color: #ffffff; /* White background */
+    min-width: 150px;
+    flex: 1 1 150px;
+    border-radius: 8px;
+    padding: 16px 24px;
+    color: #1f2937; /* Dark text */
+    font-weight: 600;
+    user-select: none;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    transition: box-shadow 0.3s;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    cursor: default;
+}
+
+.summary-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.summary-card h3 {
+    font-weight: 600;
+    font-size: 14px;
+    color: #4b5563; /* Medium dark gray */
+    margin-bottom: 6px;
+    margin-top: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.summary-card p {
+    font-size: 24px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    color: #111827; /* darker text for values */
+}
+
+.stat-increase {
+    color: #16a34a; /* green */
+    font-size: 14px;
+    margin-left: 8px;
+    font-weight: 700;
+}
+
+.stat-decrease {
+    color: #dc2626; /* red */
+    font-size: 14px;
+    margin-left: 8px;
+    font-weight: 700;
+}
+
+/* Product sales section consistent */
+.product-sales-section {
+    margin: 32px 0;
+    background-color: #ffffff; /* White background */
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+    color: #1f2937;
+}
+
+.product-sales-section h2 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    font-weight: 700;
+    font-size: 22px;
+}
+
+/* Section card styling consistent */
+.section-card {
+    background-color: #ffffff; /* White background */
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+    color: #1f2937;
+    display: flex;
+    flex-direction: column;
+}
+
+.section-card h2,
+.section-card h3 {
+    margin-top: 0;
+    font-weight: 700;
+}
+
+/* Category list styling (if used) */
+.category-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.category-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 50%;
+    font-size: 14px;
+    color: #374151; /* darker gray */
+}
+
+.color-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* Your other styles for recent-orders, buttons etc. can remain as is */
+
+/* (Optional) Maintain consistency in font family, colors, and spacing throughout the rest of your CSS */

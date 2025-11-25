@@ -2,15 +2,30 @@ import React, { useState, useEffect } from 'react';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+} from 'recharts';
 import '../styles/performance-page.css';
+import SalesByDishSection from './SalesByDishSection'; // Import the separate component
+
+const TIME_PERIODS = [
+    { label: "This week", value: "thisWeek" },
+    { label: "This month", value: "thisMonth" },
+    { label: "This year", value: "thisYear" }
+];
+
+const DISH_COLORS = [
+    "#7c3aed", "#6366f1", "#f97316", "#ec4899", "#10b981",
+    "#9333ea", "#f43f5e", "#a78bfa", "#34d399", "#60a5fa"
+];
 
 const PerformancePage = () => {
     const [user, setUser] = useState(null);
+    const [restaurantId, setRestaurantId] = useState(null);
     const [dishes, setDishes] = useState([]);
     const [completedOrders, setCompletedOrders] = useState([]);
     const [selectedDishes, setSelectedDishes] = useState([]); // Array for multiple selected dishes
-    const [dateRange, setDateRange] = useState('this month');
+    const [selectedPeriod, setSelectedPeriod] = useState("thisMonth"); // Match HomePage
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -53,6 +68,7 @@ const PerformancePage = () => {
                 setLoading(false);
                 return;
             }
+            setRestaurantId(restaurantId);
 
             // Fetch dishes for the restaurant
             const dishesQuery = query(collection(db, 'dishes'), where('restaurantId', '==', restaurantId));
@@ -78,34 +94,36 @@ const PerformancePage = () => {
         }
     };
 
-    // Helper function to get date range
-    const getDateRange = (range) => {
+    // Helper function to get date range - Match HomePage exactly
+    const getDateRange = (period) => {
         const now = new Date();
         let startDate;
-        switch (range) {
-            case 'today':
+        switch (period) {
+            case "today":
                 startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
                 break;
-            case 'yesterday':
+            case "yesterday":
                 startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+                const endYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59);
+                return { start: startDate, end: endYesterday };
+            case "thisWeek":
+                startDate = new Date(now);
+                startDate.setDate(now.getDate() - now.getDay());
                 break;
-            case 'this week':
-                startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
-                break;
-            case 'this month':
+            case "thisMonth":
                 startDate = new Date(now.getFullYear(), now.getMonth(), 1);
                 break;
-            case 'this year':
+            case "thisYear":
                 startDate = new Date(now.getFullYear(), 0, 1);
                 break;
             default:
-                startDate = new Date(0);
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
         }
-        return { startDate, endDate: now };
+        return { start: startDate, end: now };
     };
 
-    // Filter orders by date range
-    const { startDate, endDate } = getDateRange(dateRange);
+    // Filter orders by date range - Use selectedPeriod
+    const { start: startDate, end: endDate } = getDateRange(selectedPeriod);
     const filteredOrders = completedOrders.filter(order => {
         if (!order.createdAt) return false;
         const orderDate = order.createdAt.toDate ? order.createdAt.toDate() : new Date(order.createdAt);
@@ -117,31 +135,93 @@ const PerformancePage = () => {
     const totalOrders = filteredOrders.length;
     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
-    // Prepare data for revenue over time chart
-    const revenueByDate = {};
-    filteredOrders.forEach(order => {
-        if (order.createdAt) {
-            const date = order.createdAt.toDate ? order.createdAt.toDate().toDateString() : new Date(order.createdAt).toDateString();
-            revenueByDate[date] = (revenueByDate[date] || 0) + parseFloat(order.totalPrice || 0);
-        }
-    });
-    const overallChartData = Object.entries(revenueByDate).map(([date, revenue]) => ({ date, revenue }));
+    // Prepare data for revenue over time chart - Match HomePage style
+    const buildOverallChartData = () => {
+        const revenueByDate = {};
+        filteredOrders.forEach(order => {
+            if (!order.createdAt) return;
+            const createdAtDate = order.createdAt.toDate ? order.createdAt.toDate() : new Date(order.createdAt);
+            if (createdAtDate < startDate || createdAtDate > endDate) return;
+            let label;
+            if (selectedPeriod === "today" || selectedPeriod === "yesterday") {
+                label = createdAtDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+            } else if (selectedPeriod === "thisWeek" || selectedPeriod === "thisMonth") {
+                label = createdAtDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            } else {
+                label = createdAtDate.toLocaleDateString('en-US', { month: 'short' });
+            }
+            revenueByDate[label] = (revenueByDate[label] || 0) + parseFloat(order.totalPrice || 0);
+        });
 
-    // Prepare data for individual dish performance line chart
-    const dishPerformanceByDate = {};
-    filteredOrders.forEach(order => {
-        if (order.createdAt) {
-            const date = order.createdAt.toDate ? order.createdAt.toDate().toDateString() : new Date(order.createdAt).toDateString();
-            if (!dishPerformanceByDate[date]) {
-                dishPerformanceByDate[date] = {};
+        const data = [];
+        let current = new Date(startDate);
+        while (current <= endDate) {
+            let label;
+            if (selectedPeriod === "today" || selectedPeriod === "yesterday") {
+                label = current.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+                current.setHours(current.getHours() + 1);
+            } else if (selectedPeriod === "thisWeek" || selectedPeriod === "thisMonth") {
+                label = current.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                current.setDate(current.getDate() + 1);
+            } else {
+                label = current.toLocaleDateString('en-US', { month: 'short' });
+                current.setMonth(current.getMonth() + 1);
+            }
+            data.push({ date: label, revenue: revenueByDate[label] || 0 });
+        }
+        return data;
+    };
+
+    const overallChartData = buildOverallChartData();
+
+    // Prepare data for individual dish performance line chart - Match buildOverallChartData function
+    const buildDishChartData = () => {
+        const dishPerformanceByDate = {};
+        filteredOrders.forEach(order => {
+            if (!order.createdAt) return;
+            const createdAtDate = order.createdAt.toDate ? order.createdAt.toDate() : new Date(order.createdAt);
+            if (createdAtDate < startDate || createdAtDate > endDate) return;
+            let label;
+            if (selectedPeriod === "today" || selectedPeriod === "yesterday") {
+                label = createdAtDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+            } else if (selectedPeriod === "thisWeek" || selectedPeriod === "thisMonth") {
+                label = createdAtDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            } else {
+                label = createdAtDate.toLocaleDateString('en-US', { month: 'short' });
+            }
+            if (!dishPerformanceByDate[label]) {
+                dishPerformanceByDate[label] = {};
             }
             order.items.forEach(item => {
                 const dishName = item.name;
-                dishPerformanceByDate[date][dishName] = (dishPerformanceByDate[date][dishName] || 0) + (item.quantity || 1);
+                dishPerformanceByDate[label][dishName] = (dishPerformanceByDate[label][dishName] || 0) + (item.quantity || 1);
             });
+        });
+
+        const data = [];
+        let current = new Date(startDate);
+        while (current <= endDate) {
+            let label;
+            if (selectedPeriod === "today" || selectedPeriod === "yesterday") {
+                label = current.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+                current.setHours(current.getHours() + 1);
+            } else if (selectedPeriod === "thisWeek" || selectedPeriod === "thisMonth") {
+                label = current.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                current.setDate(current.getDate() + 1);
+            } else {
+                label = current.toLocaleDateString('en-US', { month: 'short' });
+                current.setMonth(current.getMonth() + 1);
+            }
+            const entry = { date: label };
+            selectedDishes.forEach(dish => {
+                entry[dish] = dishPerformanceByDate[label]?.[dish] || 0;
+            });
+            data.push(entry);
         }
-    });
-    const dishChartData = Object.entries(dishPerformanceByDate).map(([date, dishes]) => ({ date, ...dishes }));
+        return data;
+    };
+
+    const dishChartData = buildDishChartData();
 
     // Handle checkbox changes for selected dishes
     const handleDishSelection = (dishName) => {
@@ -183,46 +263,66 @@ const PerformancePage = () => {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10);
 
+    // Prepare dishData for pie chart (similar to HomePage)
+    const dishArray = Object.entries(dishStats).map(([name, stats]) => ({ name, quantity: stats.count, revenue: stats.revenue }));
+    const dishData = dishArray.sort((a, b) => b.quantity - a.quantity)
+        .map((dish, idx) => ({ ...dish, color: DISH_COLORS[idx % DISH_COLORS.length] }));
+
     if (loading) return <div className="main-content">Loading performance data...</div>;
     if (error) return <div className="main-content">Error: {error}</div>;
 
     return (
-        <div className="performance-page">
+        <div className="performance-page" style={{ fontFamily: 'Arial, sans-serif', padding: '20px', backgroundColor: '#f9f9f9' }}>
             <h1>Restaurant Performance</h1>
 
-            {/* Date Range Filter */}
-            <div className="filters">
+            {/* Date Range Filter - Match HomePage */}
+            <div className="filters" style={{ marginBottom: '20px' }}>
                 <label htmlFor="date-range">Date Range:</label>
-                <select id="date-range" value={dateRange} onChange={(e) => setDateRange(e.target.value)}>
-                    <option value="today">Today</option>
-                    <option value="yesterday">Yesterday</option>
-                    <option value="this week">This Week</option>
-                    <option value="this month">This Month</option>
-                    <option value="this year">This Year</option>
+                <select id="date-range" value={selectedPeriod} onChange={(e) => setSelectedPeriod(e.target.value)} style={{
+                    padding: '10px 15px', backgroundColor: '#007bff', color: 'white',
+                    border: 'none', borderRadius: '5px', cursor: 'pointer', marginLeft: '10px'
+                }}>
+                    {TIME_PERIODS.map(p => (
+                        <option key={p.value} value={p.value}>{p.label}</option>
+                    ))}
                 </select>
             </div>
 
-            <div className="overall-performance">
-                <h2>Overall Performance</h2>
-                <div className="stats">
-                    <div className="stat-item">Total Revenue: ${totalRevenue.toFixed(2)}</div>
-                    <div className="stat-item">Total Completed Orders: {totalOrders}</div>
-                    <div className="stat-item">Average Order Value: ${avgOrderValue.toFixed(2)}</div>
+            {/* Summary cards like HomePage */}
+            <div className="summary-cards">
+                <div className="summary-card" aria-label="Total revenue">
+                    <h3>Total Revenue</h3>
+                    <p>${totalRevenue.toFixed(2)}</p>
                 </div>
+                <div className="summary-card" aria-label="Total completed orders">
+                    <h3>Total Completed Orders</h3>
+                    <p>{totalOrders}</p>
+                </div>
+                <div className="summary-card" aria-label="Average order value">
+                    <h3>Average Order Value</h3>
+                    <p>${avgOrderValue.toFixed(2)}</p>
+                </div>
+            </div>
+
+            <div className="overall-performance" style={{marginTop: '20px'}}>
+                <h2>Overall Performance</h2>
                 <div className="chart-container">
                     <h3>Revenue Over Time</h3>
                     <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={overallChartData}>
+                        <LineChart data={overallChartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="date" />
-                            <YAxis />
-                            <Tooltip />
+                            <YAxis tickFormatter={v => v >= 1000 ? `${v / 1000}K` : v} />
+                            // Correct tooltip formatter syntax example
+<Tooltip formatter={value => [`$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 'Revenue']} />
+                            <Legend verticalAlign="top" align="right" height={36} />
                             <Line type="monotone" dataKey="revenue" stroke="#8884d8" />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
             </div>
 
-            <div className="individual-performance">
+            <div className="individual-performance" style={{marginTop: '40px'}}>
                 <h2>Individual Dish Performance</h2>
                 <div className="dish-selector">
                     <label>Select Dishes:</label>
@@ -242,10 +342,12 @@ const PerformancePage = () => {
                 <div className="chart-container">
                     <h3>Orders Over Time for Selected Dishes</h3>
                     <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={dishChartData}>
+                        <LineChart data={dishChartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="date" />
-                            <YAxis />
-                            <Tooltip />
+                            <YAxis tickFormatter={v => v >= 1000 ? `${v / 1000}K` : v} />
+                            <Tooltip formatter={(value, name) => [`${value}`, `${name} Orders`]} />
+                            <Legend verticalAlign="top" align="right" height={36} />
                             {selectedDishes.map((dish, index) => (
                                 <Line 
                                     key={dish} 
@@ -259,7 +361,10 @@ const PerformancePage = () => {
                 </div>
             </div>
 
-            <div className="leaderboards">
+            {/* Sales by Dish Pie Chart Section */}
+            <SalesByDishSection dishData={dishData} />
+
+            <div className="leaderboards" style={{marginTop: '40px'}}>
                 <div className="leaderboard">
                     <h2>Top Performing Dishes (by Revenue)</h2>
                     <ol className="leaderboard-list">

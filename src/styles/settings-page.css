@@ -1,118 +1,197 @@
-/* settings-page.css - Generic styles for the Restaurant Settings Page */
+/* Global Reset and Base Styles (Shared with other pages) */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.6;
+  color: #374151;
+  background-color: #f9fafb;
+}
+
+/* Main Settings Page Container (Matches main-content from MenuPage) */
 .settings-page {
-  max-width: 600px;
+  max-width: 800px; /* Slightly wider for form content */
   margin: 0 auto;
   padding: 20px;
-  font-family: Arial, sans-serif;
-  background-color: #f9f9f9;
+  background-color: #ffffff;
   border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .settings-page h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a1a1a;
   text-align: center;
-  color: #333;
   margin-bottom: 20px;
 }
 
+/* Photo Section at Top (Full-Width Image) */
+.photo-section {
+  width: 100%;
+  height: 200px; /* Fixed height for the image to consume */
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  background-color: #f9fafb; /* Fallback background if no image */
+}
+
+.current-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Ensures image fills the div without distortion */
+  border-radius: 8px;
+}
+
+.change-photo-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: rgba(3, 105, 161, 0.9); /* Semi-transparent primary blue */
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  z-index: 10; /* Ensures it appears above the image */
+}
+
+.change-photo-btn:hover {
+  background-color: rgba(7, 89, 133, 0.9); /* Darker on hover */
+}
+
+.change-photo-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Form Styles (Matches form-group from MenuPage, with light colors) */
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .form-group {
-  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .form-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-  color: #555;
+  font-weight: 500;
+  color: #374151;
+  font-size: 14px;
 }
 
 .form-group input[type="text"],
 .form-group input[type="time"] {
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb; /* Light gray border */
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  background-color: #f9fafb; /* Light background */
+  color: #374151; /* Dark text for contrast */
+  transition: border-color 0.2s ease, background-color 0.2s ease;
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 16px;
   box-sizing: border-box;
 }
 
-.day-hours {
+.form-group input:focus {
+  border-color: #dbeafe; /* Light blue focus */
+  background-color: #ffffff; /* Slightly lighter on focus */
+}
+
+/* Business Hours Container (Card-like layout similar to dish-grid) */
+.business-hours-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  padding: 16px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.business-hour-row {
   display: flex;
   align-items: center;
-  margin-bottom: 10px;
+  gap: 12px;
+  padding: 12px;
+  background-color: #ffffff;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.day-hours span {
-  margin: 0 10px;
-  font-weight: bold;
-  color: #555;
+.day-label {
+  width: 80px;
+  font-weight: 600;
+  color: #1a1a1a;
 }
 
-.day-hours input[type="time"] {
-  width: auto;
+.time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex: 1;
 }
 
-.current-photo {
-  max-width: 200px;
-  max-height: 200px;
-  margin-bottom: 10px;
-  border-radius: 4px;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+.time-label {
+  font-size: 14px;
+  color: #6b7280;
 }
 
-button {
-  padding: 10px 15px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-  margin-right: 10px;
+.ampm-label {
+  font-size: 12px;
+  color: #9ca3af;
 }
 
-button:hover {
-  background-color: #0056b3;
+.closed-label {
+  display: flex;
+  align-items: center;
+  color: #9ca3af;
+  font-style: italic;
+  font-size: 14px;
 }
 
-button:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-
-.hidden-file-input {
-  display: none;
-}
-
-p {
-  margin: 10px 0;
-  color: #666;
-}
-
-/* Toggle Switch Styling */
+/* Toggle Switch (Updated to match button colors) */
 .switch {
   position: relative;
   display: inline-block;
   width: 40px;
   height: 24px;
-  margin-right: 10px;
   vertical-align: middle;
 }
+
 .switch input {
   opacity: 0;
   width: 0;
   height: 0;
 }
+
 .slider {
   position: absolute;
   cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: #ccc;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #d1d5db;
   transition: 0.4s;
   border-radius: 24px;
 }
+
 .slider:before {
   position: absolute;
   content: "";
@@ -120,57 +199,102 @@ p {
   width: 18px;
   left: 3px;
   bottom: 3px;
-  background-color: white;
+  background-color: #ffffff;
   transition: 0.4s;
   border-radius: 50%;
 }
+
 input:checked + .slider {
-  background-color: #007bff;
+  background-color: #0369a1; /* Matches primary button color */
 }
+
 input:checked + .slider:before {
   transform: translateX(16px);
 }
 
-/* Business hours layout */
-.business-hours-container {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* Hidden File Input and Selected File Text */
+.hidden-file-input {
+  display: none;
 }
 
-.business-hour-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+p {
+  font-size: 14px;
+  color: #6b7280;
 }
 
-.day-label {
-  width: 80px;
-  font-weight: 600;
+/* Buttons (Matches btn-primary from MenuPage) */
+button {
+  padding: 10px 16px;
+  background-color: #0369a1;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  align-self: flex-start;
 }
 
-.time-inputs {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+button:hover {
+  background-color: #075985;
 }
 
-.time-label {
-  font-size: 0.9em;
-  color: #555;
+button:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
 }
 
-input[type="time"] {
-  padding: 6px 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+/* Responsive Design (Matches MenuPage) */
+@media (max-width: 768px) {
+  .settings-page {
+    padding: 15px;
+  }
+
+  .settings-page h1 {
+    font-size: 24px;
+  }
+
+  .photo-section {
+    height: 150px; /* Smaller height on tablets */
+  }
+
+  .business-hour-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .day-label {
+    width: auto;
+  }
+
+  .time-inputs {
+    flex-wrap: wrap;
+  }
 }
 
-/* Closed label */
-.closed-label {
-  display: flex;
-  align-items: center;
-  color: #999;
-  font-style: italic;
-  font-size: 0.9em;
+@media (max-width: 480px) {
+  .settings-page {
+    padding: 12px;
+  }
+
+  .settings-page h1 {
+    font-size: 20px;
+  }
+
+  .photo-section {
+    height: 120px; /* Even smaller on mobile */
+  }
+
+  .form-group input {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  button {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+  }
 }

@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/menu-page.css';
 import AddDishOverlay from './add-dish-overlay';
+import EditDishOverlay from './edit-dish-overlay';
 import { db } from '../firebase'; // Assuming Firebase is configured
-import { collection, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore'; // Added updateDoc and deleteDoc
 import supabase from '../supabase'; // Assuming Supabase is configured
 
 const MenuPage = () => {
   const [isOverlayOpen, setIsOverlayOpen] = useState(false);
+  const [isEditOverlayOpen, setIsEditOverlayOpen] = useState(false);
+  const [selectedDish, setSelectedDish] = useState(null);
   const [dishes, setDishes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -15,17 +18,16 @@ const MenuPage = () => {
   useEffect(() => {
     const fetchDishes = async () => {
       try {
-        // Query dishes from Firestore, sorted by createdAt descending
         const dishesQuery = query(collection(db, 'dishes'), orderBy('createdAt', 'desc'));
         const dishesSnapshot = await getDocs(dishesQuery);
         const dishesList = [];
 
         for (const docSnap of dishesSnapshot.docs) {
           const dishData = docSnap.data();
-          const { name, category, price, description, restaurantId, imageUrl, createdAt } = dishData;
+          const { name, category, price, description, restaurantId, imageUrl, createdAt, status } = dishData;
           const dishId = docSnap.id;
 
-          // Fetch restaurant name from 'users' collection (using restaurantId as UID)
+          // Fetch restaurant name
           let restaurantName = 'Unknown Restaurant';
           if (restaurantId) {
             try {
@@ -40,7 +42,7 @@ const MenuPage = () => {
             }
           }
 
-          // Get image URL from Supabase if imageUrl is a path (e.g., file name)
+          // Get image URL from Supabase
           let publicImageUrl = '';
           if (imageUrl) {
             try {
@@ -60,6 +62,7 @@ const MenuPage = () => {
             restaurantName,
             imageSrc: publicImageUrl,
             createdAt: createdAt?.toDate() ? createdAt.toDate().toLocaleDateString() : 'Unknown',
+            status: status || 'available', // Default to 'available' if not set
           });
         }
 
@@ -81,8 +84,59 @@ const MenuPage = () => {
 
   const handleCloseOverlay = () => {
     setIsOverlayOpen(false);
-    // Optionally, refetch dishes after adding a new one
-    window.location.reload(); // Simple reload; or implement a refetch function
+    window.location.reload();
+  };
+
+  const handleEditDishClick = (dish) => {
+    setSelectedDish(dish);
+    setIsEditOverlayOpen(true);
+  };
+
+  const handleCloseEditOverlay = () => {
+    setIsEditOverlayOpen(false);
+    setSelectedDish(null);
+    window.location.reload();
+  };
+
+  // Handle toggle status
+  const handleToggleStatus = async (dish) => {
+    try {
+      const newStatus = dish.status === 'available' ? 'unavailable' : 'available';
+      const dishDocRef = doc(db, 'dishes', dish.id);
+      await updateDoc(dishDocRef, { status: newStatus });
+      alert(`Dish status updated to ${newStatus}!`);
+      window.location.reload(); // Reload to reflect changes
+    } catch (err) {
+      console.error('Error toggling status:', err);
+      alert('Failed to update status. Please try again.');
+    }
+  };
+
+  // Handle delete dish
+  const handleDeleteDish = async (dish) => {
+    if (!window.confirm(`Are you sure you want to delete "${dish.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      // Delete image from Supabase if exists
+      if (dish.imageUrl) {
+        const { error: deleteError } = await supabase.storage.from('dishes').remove([dish.imageUrl]);
+        if (deleteError) {
+          console.error('Error deleting image:', deleteError);
+          // Continue with Firestore deletion even if image delete fails
+        }
+      }
+
+      // Delete from Firestore
+      const dishDocRef = doc(db, 'dishes', dish.id);
+      await deleteDoc(dishDocRef);
+      alert('Dish deleted successfully!');
+      window.location.reload(); // Reload to reflect changes
+    } catch (err) {
+      console.error('Error deleting dish:', err);
+      alert('Failed to delete dish. Please try again.');
+    }
   };
 
   if (loading) return <div className="main-content">Loading dishes...</div>;
@@ -141,12 +195,23 @@ const MenuPage = () => {
                 <p className="dish-description">{dish.description}</p>
                 <div className="dish-meta">
                   <span className="dish-price">${dish.price}</span>
-                  <span className="dish-status status-available">Available</span> {/* Placeholder; add logic for status if needed */}
+                  <span className={`dish-status ${dish.status === 'available' ? 'status-available' : 'status-unavailable'}`}>
+                    {dish.status === 'available' ? 'Available' : 'Unavailable'}
+                  </span>
                 </div>
                 <div className="admin-actions">
-                  <button className="admin-btn btn-edit"><i className="fas fa-edit"></i> Edit</button>
-                  <button className="admin-btn btn-toggle"><i className="fas fa-ban"></i> Disable</button>
-                  <button className="admin-btn btn-delete"><i className="fas fa-trash"></i></button>
+                  <button className="admin-btn btn-edit" onClick={() => handleEditDishClick(dish)}>
+                    <i className="fas fa-edit"></i> Edit
+                  </button>
+                  <button className={`admin-btn btn-toggle ${dish.status === 'available' ? 'btn-disable' : 'btn-enable'}`} onClick={() => handleToggleStatus(dish)}>
+                    <i className="fas fa-ban"></i> {dish.status === 'available' ? 'Disable' : 'Enable'}
+                  </button>
+                  <button className="admin-btn btn-delete" onClick={() => handleDeleteDish(dish)}>
+                    {/* Inline SVG Trash Icon */}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
                 </div>
               </div>
             </div>
@@ -154,8 +219,8 @@ const MenuPage = () => {
         )}
       </div>
 
-      {/* Overlay Component */}
       <AddDishOverlay isOpen={isOverlayOpen} onClose={handleCloseOverlay} />
+      <EditDishOverlay isOpen={isEditOverlayOpen} onClose={handleCloseEditOverlay} dish={selectedDish} />
     </div>
   );
 };

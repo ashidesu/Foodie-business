@@ -5,6 +5,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import supabase from '../supabase.js'; // Assuming Supabase client is configured and exported
 import '../styles/settings-page.css'; // Assuming you have a CSS file for styling
 import '../styles/general.css';
+
 const daysOfWeek = [
   { key: 'monday', label: 'Monday' },
   { key: 'tuesday', label: 'Tuesday' },
@@ -213,6 +214,30 @@ const SettingsPage = () => {
   return (
     <div className="settings-page">
       <h1>Restaurant Settings</h1>
+
+      {/* Photo Section Moved to Top */}
+      <div className="photo-section">
+        {restaurantData.photoUrl && (
+          <img src={restaurantData.photoUrl} alt="Current Restaurant" className="current-photo" />
+        )}
+        <button type="button" onClick={handleButtonClick} className="change-photo-btn">
+          {/* Inline SVG Pencil Icon */}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Change Photo
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileInputChange}
+          className="hidden-file-input"
+        />
+        {selectedPhoto && <p>Selected: {selectedPhoto.name}</p>}
+      </div>
+
       <form onSubmit={handleSubmit}>
         {/* Name */}
         <div className="form-group">
@@ -315,25 +340,6 @@ const SettingsPage = () => {
               );
             })}
           </div>
-        </div>
-
-        {/* Photo */}
-        <div className="form-group">
-          <label>Photo:</label>
-          {restaurantData.photoUrl && (
-            <img src={restaurantData.photoUrl} alt="Current Restaurant" className="current-photo" />
-          )}
-          <button type="button" onClick={handleButtonClick}>
-            Select New Photo
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileInputChange}
-            className="hidden-file-input"
-          />
-          {selectedPhoto && <p>Selected: {selectedPhoto.name}</p>}
         </div>
 
         {/* Submit */}
