@@ -3,7 +3,8 @@ import '../styles/menu-page.css';
 import AddDishOverlay from './add-dish-overlay';
 import EditDishOverlay from './edit-dish-overlay';
 import { db } from '../firebase'; // Assuming Firebase is configured
-import { collection, getDocs, query, orderBy, doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore'; // Added updateDoc and deleteDoc
+import { collection, getDocs, query, orderBy, doc, getDoc, updateDoc, deleteDoc, where } from 'firebase/firestore'; // Added where, updateDoc, and deleteDoc
+import { getAuth } from 'firebase/auth'; // Added for authentication
 import supabase from '../supabase'; // Assuming Supabase is configured
 
 const MenuPage = () => {
@@ -14,33 +15,45 @@ const MenuPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Fetch dishes from Firestore on mount
+  // Fetch dishes from Firestore on mount, filtered by the logged-in user's restaurantId
   useEffect(() => {
     const fetchDishes = async () => {
       try {
-        const dishesQuery = query(collection(db, 'dishes'), orderBy('createdAt', 'desc'));
+        const auth = getAuth();
+        const user = auth.currentUser;
+
+        if (!user) {
+          setError('Please log in to view your dishes.');
+          setLoading(false);
+          return;
+        }
+
+        // Fetch the restaurant name once for the current user
+        let restaurantName = 'Unknown Restaurant';
+        try {
+          const restaurantDocRef = doc(db, 'users', user.uid);
+          const restaurantDocSnap = await getDoc(restaurantDocRef);
+          if (restaurantDocSnap.exists()) {
+            const restaurantData = restaurantDocSnap.data();
+            restaurantName = restaurantData.displayname || restaurantData.name || 'Unknown Restaurant';
+          }
+        } catch (fetchError) {
+          console.error('Error fetching restaurant:', fetchError);
+        }
+
+        // Query dishes where restaurantId matches the current user's ID
+        const dishesQuery = query(
+          collection(db, 'dishes'),
+          where('restaurantId', '==', user.uid),
+          orderBy('createdAt', 'desc')
+        );
         const dishesSnapshot = await getDocs(dishesQuery);
         const dishesList = [];
 
         for (const docSnap of dishesSnapshot.docs) {
           const dishData = docSnap.data();
-          const { name, category, price, description, restaurantId, imageUrl, createdAt, status } = dishData;
+          const { name, category, price, description, imageUrl, createdAt, status } = dishData;
           const dishId = docSnap.id;
-
-          // Fetch restaurant name
-          let restaurantName = 'Unknown Restaurant';
-          if (restaurantId) {
-            try {
-              const restaurantDocRef = doc(db, 'users', restaurantId);
-              const restaurantDocSnap = await getDoc(restaurantDocRef);
-              if (restaurantDocSnap.exists()) {
-                const restaurantData = restaurantDocSnap.data();
-                restaurantName = restaurantData.displayname || restaurantData.name || 'Unknown Restaurant';
-              }
-            } catch (fetchError) {
-              console.error('Error fetching restaurant:', fetchError);
-            }
-          }
 
           // Get image URL from Supabase
           let publicImageUrl = '';
@@ -59,8 +72,9 @@ const MenuPage = () => {
             category,
             price,
             description,
-            restaurantName,
+            restaurantName, // Use the fetched restaurant name
             imageSrc: publicImageUrl,
+            imageUrl, // Store the original imageUrl for deletion
             createdAt: createdAt?.toDate() ? createdAt.toDate().toLocaleDateString() : 'Unknown',
             status: status || 'available', // Default to 'available' if not set
           });

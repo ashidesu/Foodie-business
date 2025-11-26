@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { collection, query, where, getDocs, updateDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase'; // Assuming you have a firebase.js file exporting db
 import '../styles/order-page.css';
 
@@ -45,27 +45,8 @@ const OrderPage = () => {
         setLoading(true);
         setError(null);
         try {
-            // Fetch the user document to get restaurantId
-            const userDocRef = doc(db, 'users', currentUser.uid); // Assuming 'users' collection with doc ID as user.uid
-            const userDocSnap = await getDoc(userDocRef);
-            
-            if (!userDocSnap.exists()) {
-                setError('User document not found');
-                setLoading(false);
-                return;
-            }
-            
-            const userData = userDocSnap.data();
-            const restaurantId = userData.restaurantId; // Get restaurantId from the user document
-            
-            if (!restaurantId) {
-                setError('Restaurant ID not found in user document');
-                setLoading(false);
-                return;
-            }
-
-            // Now query orders with the restaurantId
-            const q = query(collection(db, 'orders'), where('restaurantId', '==', restaurantId));
+            // Query orders where restaurantId matches the current user's UID
+            const q = query(collection(db, 'orders'), where('restaurantId', '==', currentUser.uid));
             const querySnapshot = await getDocs(q);
             const fetchedOrders = querySnapshot.docs.map(doc => ({
                 id: doc.id,
