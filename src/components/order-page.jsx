@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase'; // Assuming you have a firebase.js file exporting db
 import '../styles/order-page.css';
 
@@ -45,8 +45,35 @@ const OrderPage = () => {
         setLoading(true);
         setError(null);
         try {
-            // Query orders where restaurantId matches the current user's UID
-            const q = query(collection(db, 'orders'), where('restaurantId', '==', currentUser.uid));
+            // Fetch restaurantId from user document
+            let restaurantId = null;
+
+            try {
+                const userDocRef = doc(db, 'users', currentUser.uid);
+                const userDocSnap = await getDoc(userDocRef);
+                if (userDocSnap.exists()) {
+                    const userData = userDocSnap.data();
+                    restaurantId = userData.restaurantId || null;
+                } else {
+                    setError('User data not found.');
+                    setLoading(false);
+                    return;
+                }
+            } catch (fetchError) {
+                console.error('Error fetching user document:', fetchError);
+                setError('Failed to fetch user data.');
+                setLoading(false);
+                return;
+            }
+
+            if (!restaurantId) {
+                setError('Restaurant ID not found for user.');
+                setLoading(false);
+                return;
+            }
+
+            // Query orders where restaurantId matches fetched restaurantId
+            const q = query(collection(db, 'orders'), where('restaurantId', '==', restaurantId));
             const querySnapshot = await getDocs(q);
             const fetchedOrders = querySnapshot.docs.map(doc => ({
                 id: doc.id,
@@ -226,7 +253,7 @@ const OrderPage = () => {
                                         <button className="btn btn-ready" onClick={() => handleMarkReady(order.id)}>Mark as Ready</button>
                                     )}
                                     {activeTab === 'ready' && (
-                                        <button className="btn btn-out for delivery" onClick={() => handleMarkOutForDelivery(order.id)}>Mark as Out for Delivery</button>
+                                        <button className="btn btn-out-for-delivery" onClick={() => handleMarkOutForDelivery(order.id)}>Mark as Out for Delivery</button>
                                     )}
                                     {/* No actions for 'out for delivery' or 'completed' tabs */}
                                 </div>

@@ -19,7 +19,7 @@ const SalesByDishSection = ({ dishData = [] }) => {
                                     className="color-dot"
                                     style={{ backgroundColor: color }}
                                 ></span>
-                                {name} - {quantity} orders (${revenue.toFixed(2)})
+                                {name} - {quantity} orders (₱{revenue.toFixed(2)})
                             </div>
                         ))
                     ) : (

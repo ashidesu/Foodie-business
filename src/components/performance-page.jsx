@@ -53,16 +53,16 @@ const PerformancePage = () => {
             // Fetch user document to get restaurantId
             const userDocRef = doc(db, 'users', currentUser.uid);
             const userDocSnap = await getDoc(userDocRef);
-            
+
             if (!userDocSnap.exists()) {
                 setError('User document not found');
                 setLoading(false);
                 return;
             }
-            
+
             const userData = userDocSnap.data();
             const restaurantId = userData.restaurantId;
-            
+
             if (!restaurantId) {
                 setError('Restaurant ID not found in user document');
                 setLoading(false);
@@ -225,9 +225,9 @@ const PerformancePage = () => {
 
     // Handle checkbox changes for selected dishes
     const handleDishSelection = (dishName) => {
-        setSelectedDishes(prev => 
-            prev.includes(dishName) 
-                ? prev.filter(d => d !== dishName) 
+        setSelectedDishes(prev =>
+            prev.includes(dishName)
+                ? prev.filter(d => d !== dishName)
                 : [...prev, dishName]
         );
     };
@@ -292,7 +292,7 @@ const PerformancePage = () => {
             <div className="summary-cards">
                 <div className="summary-card" aria-label="Total revenue">
                     <h3>Total Revenue</h3>
-                    <p>${totalRevenue.toFixed(2)}</p>
+                    <p>₱{totalRevenue.toFixed(2)}</p>
                 </div>
                 <div className="summary-card" aria-label="Total completed orders">
                     <h3>Total Completed Orders</h3>
@@ -300,11 +300,11 @@ const PerformancePage = () => {
                 </div>
                 <div className="summary-card" aria-label="Average order value">
                     <h3>Average Order Value</h3>
-                    <p>${avgOrderValue.toFixed(2)}</p>
+                    <p>₱{avgOrderValue.toFixed(2)}</p>
                 </div>
             </div>
 
-            <div className="overall-performance" style={{marginTop: '20px'}}>
+            <div className="overall-performance" style={{ marginTop: '20px' }}>
                 <h2>Overall Performance</h2>
                 <div className="chart-container">
                     <h3>Revenue Over Time</h3>
@@ -314,7 +314,7 @@ const PerformancePage = () => {
                             <XAxis dataKey="date" />
                             <YAxis tickFormatter={v => v >= 1000 ? `${v / 1000}K` : v} />
                             // Correct tooltip formatter syntax example
-<Tooltip formatter={value => [`$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 'Revenue']} />
+                            <Tooltip formatter={value => [`$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, 'Revenue']} />
                             <Legend verticalAlign="top" align="right" height={36} />
                             <Line type="monotone" dataKey="revenue" stroke="#8884d8" />
                         </LineChart>
@@ -322,7 +322,7 @@ const PerformancePage = () => {
                 </div>
             </div>
 
-            <div className="individual-performance" style={{marginTop: '40px'}}>
+            <div className="individual-performance" style={{ marginTop: '40px' }}>
                 <h2>Individual Dish Performance</h2>
                 <div className="dish-selector">
                     <label>Select Dishes:</label>
@@ -349,10 +349,10 @@ const PerformancePage = () => {
                             <Tooltip formatter={(value, name) => [`${value}`, `${name} Orders`]} />
                             <Legend verticalAlign="top" align="right" height={36} />
                             {selectedDishes.map((dish, index) => (
-                                <Line 
-                                    key={dish} 
-                                    type="monotone" 
-                                    dataKey={dish} 
+                                <Line
+                                    key={dish}
+                                    type="monotone"
+                                    dataKey={dish}
                                     stroke={`hsl(${index * 137.5 % 360}, 70%, 50%)`} // Different colors
                                 />
                             ))}
@@ -364,7 +364,7 @@ const PerformancePage = () => {
             {/* Sales by Dish Pie Chart Section */}
             <SalesByDishSection dishData={dishData} />
 
-            <div className="leaderboards" style={{marginTop: '40px'}}>
+            <div className="leaderboards" style={{ marginTop: '40px' }}>
                 <div className="leaderboard">
                     <h2>Top Performing Dishes (by Revenue)</h2>
                     <ol className="leaderboard-list">
@@ -372,7 +372,7 @@ const PerformancePage = () => {
                             <li key={name} className="leaderboard-item">
                                 <span className="rank">{index + 1}.</span>
                                 <span className="name">{name}</span>
-                                <span className="value">${stats.revenue.toFixed(2)}</span>
+                                <span className="value">₱{stats.revenue.toFixed(2)}</span>
                             </li>
                         ))}
                     </ol>

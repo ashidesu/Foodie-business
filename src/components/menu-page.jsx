@@ -3,8 +3,8 @@ import '../styles/menu-page.css';
 import AddDishOverlay from './add-dish-overlay';
 import EditDishOverlay from './edit-dish-overlay';
 import { db } from '../firebase'; // Assuming Firebase is configured
-import { collection, getDocs, query, orderBy, doc, getDoc, updateDoc, deleteDoc, where } from 'firebase/firestore'; // Added where, updateDoc, and deleteDoc
-import { getAuth } from 'firebase/auth'; // Added for authentication
+import { collection, getDocs, query, orderBy, doc, getDoc, updateDoc, deleteDoc, where } from 'firebase/firestore';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 import supabase from '../supabase'; // Assuming Supabase is configured
 
 const MenuPage = () => {
@@ -14,83 +14,109 @@ const MenuPage = () => {
   const [dishes, setDishes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [user, setUser] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
-  // Fetch dishes from Firestore on mount, filtered by the logged-in user's restaurantId
+  // Listen for auth state changes
   useEffect(() => {
-    const fetchDishes = async () => {
-      try {
-        const auth = getAuth();
-        const user = auth.currentUser;
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        fetchDishes(currentUser);
+      } else {
+        setError('Please log in to view your dishes.');
+        setLoading(false);
+      }
+    });
 
-        if (!user) {
-          setError('Please log in to view your dishes.');
+    return () => unsubscribe();
+  }, []);
+
+  const fetchDishes = async (currentUser) => {
+    try {
+      setLoading(true);
+      setError('');
+
+      // Fetch restaurantId and restaurantName from user document
+      let restaurantId = null;
+      let restaurantName = 'Unknown Restaurant';
+
+      try {
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data();
+          restaurantId = userData.restaurantId || null; // fetched restaurantId
+          restaurantName = userData.displayname || userData.name || 'Unknown Restaurant';
+        } else {
+          setError('User data not found.');
           setLoading(false);
           return;
         }
-
-        // Fetch the restaurant name once for the current user
-        let restaurantName = 'Unknown Restaurant';
-        try {
-          const restaurantDocRef = doc(db, 'users', user.uid);
-          const restaurantDocSnap = await getDoc(restaurantDocRef);
-          if (restaurantDocSnap.exists()) {
-            const restaurantData = restaurantDocSnap.data();
-            restaurantName = restaurantData.displayname || restaurantData.name || 'Unknown Restaurant';
-          }
-        } catch (fetchError) {
-          console.error('Error fetching restaurant:', fetchError);
-        }
-
-        // Query dishes where restaurantId matches the current user's ID
-        const dishesQuery = query(
-          collection(db, 'dishes'),
-          where('restaurantId', '==', user.uid),
-          orderBy('createdAt', 'desc')
-        );
-        const dishesSnapshot = await getDocs(dishesQuery);
-        const dishesList = [];
-
-        for (const docSnap of dishesSnapshot.docs) {
-          const dishData = docSnap.data();
-          const { name, category, price, description, imageUrl, createdAt, status } = dishData;
-          const dishId = docSnap.id;
-
-          // Get image URL from Supabase
-          let publicImageUrl = '';
-          if (imageUrl) {
-            try {
-              const { data: urlData } = supabase.storage.from('dishes').getPublicUrl(imageUrl);
-              publicImageUrl = urlData?.publicUrl || '';
-            } catch (urlError) {
-              console.error('Error getting image URL:', urlError);
-            }
-          }
-
-          dishesList.push({
-            id: dishId,
-            name,
-            category,
-            price,
-            description,
-            restaurantName, // Use the fetched restaurant name
-            imageSrc: publicImageUrl,
-            imageUrl, // Store the original imageUrl for deletion
-            createdAt: createdAt?.toDate() ? createdAt.toDate().toLocaleDateString() : 'Unknown',
-            status: status || 'available', // Default to 'available' if not set
-          });
-        }
-
-        setDishes(dishesList);
       } catch (fetchError) {
-        console.error('Error fetching dishes:', fetchError);
-        setError('Failed to load dishes. Please try again.');
-      } finally {
+        console.error('Error fetching user document:', fetchError);
+        setError('Failed to fetch user data.');
         setLoading(false);
+        return;
       }
-    };
 
-    fetchDishes();
-  }, []);
+      if (!restaurantId) {
+        setError('Restaurant ID not found for user.');
+        setLoading(false);
+        return;
+      }
+
+      // Query dishes where restaurantId matches fetched restaurantId
+      const dishesQuery = query(
+        collection(db, 'dishes'),
+        where('restaurantId', '==', restaurantId),
+        orderBy('createdAt', 'desc')
+      );
+
+      const dishesSnapshot = await getDocs(dishesQuery);
+      const dishesList = [];
+
+      for (const docSnap of dishesSnapshot.docs) {
+        const dishData = docSnap.data();
+        const { name, category, price, description, imageUrl, createdAt, status } = dishData;
+        const dishId = docSnap.id;
+
+        // Get image URL from Supabase
+        let publicImageUrl = '';
+        if (imageUrl) {
+          try {
+            const { data: urlData } = supabase.storage.from('dishes').getPublicUrl(imageUrl);
+            publicImageUrl = urlData?.publicUrl || '';
+          } catch (urlError) {
+            console.error('Error getting image URL:', urlError);
+          }
+        }
+
+        dishesList.push({
+          id: dishId,
+          name,
+          category,
+          price,
+          description,
+          restaurantName,
+          imageSrc: publicImageUrl,
+          imageUrl,
+          createdAt: createdAt?.toDate ? createdAt.toDate().toLocaleDateString() : 'Unknown',
+          status: status || 'available',
+        });
+      }
+
+      setDishes(dishesList);
+    } catch (fetchError) {
+      console.error('Error fetching dishes:', fetchError);
+      setError('Failed to load dishes. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddDishClick = () => {
     setIsOverlayOpen(true);
@@ -112,46 +138,48 @@ const MenuPage = () => {
     window.location.reload();
   };
 
-  // Handle toggle status
   const handleToggleStatus = async (dish) => {
     try {
       const newStatus = dish.status === 'available' ? 'unavailable' : 'available';
       const dishDocRef = doc(db, 'dishes', dish.id);
       await updateDoc(dishDocRef, { status: newStatus });
       alert(`Dish status updated to ${newStatus}!`);
-      window.location.reload(); // Reload to reflect changes
+      window.location.reload();
     } catch (err) {
       console.error('Error toggling status:', err);
       alert('Failed to update status. Please try again.');
     }
   };
 
-  // Handle delete dish
   const handleDeleteDish = async (dish) => {
     if (!window.confirm(`Are you sure you want to delete "${dish.name}"? This action cannot be undone.`)) {
       return;
     }
 
     try {
-      // Delete image from Supabase if exists
       if (dish.imageUrl) {
         const { error: deleteError } = await supabase.storage.from('dishes').remove([dish.imageUrl]);
         if (deleteError) {
           console.error('Error deleting image:', deleteError);
-          // Continue with Firestore deletion even if image delete fails
         }
       }
-
-      // Delete from Firestore
       const dishDocRef = doc(db, 'dishes', dish.id);
       await deleteDoc(dishDocRef);
       alert('Dish deleted successfully!');
-      window.location.reload(); // Reload to reflect changes
+      window.location.reload();
     } catch (err) {
       console.error('Error deleting dish:', err);
       alert('Failed to delete dish. Please try again.');
     }
   };
+
+  // Filter dishes based on search term, category, and status
+  const filteredDishes = dishes.filter((dish) => {
+    const matchesSearch = dish.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === '' || dish.category === categoryFilter;
+    const matchesStatus = statusFilter === '' || dish.status === statusFilter;
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
 
   if (loading) return <div className="main-content">Loading dishes...</div>;
   if (error) return <div className="main-content"><p className="error-message">{error}</p></div>;
@@ -161,15 +189,28 @@ const MenuPage = () => {
       <div className="gallery-header">
         <h1>Dish Management</h1>
         <div className="search-bar">
-          <input type="text" placeholder="Search dishes..." />
-          <button><i className="fas fa-search"></i></button>
+          <input 
+            type="text" 
+            placeholder="Search dishes..." 
+            value={searchTerm} 
+            onChange={(e) => setSearchTerm(e.target.value)} 
+          />
+          <button>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21 21L16.5 16.5M19 11C19 15.4183 15.4183 19 11 19C6.58172 19 3 15.4183 3 11C3 6.58172 6.58172 3 11 3C15.4183 3 19 6.58172 19 11Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
         </div>
       </div>
 
       <div className="filter-section">
         <div className="filter-group">
           <label htmlFor="category-filter">Category</label>
-          <select id="category-filter">
+          <select 
+            id="category-filter" 
+            value={categoryFilter} 
+            onChange={(e) => setCategoryFilter(e.target.value)}
+          >
             <option value="">All Categories</option>
             <option value="appetizers">Appetizers</option>
             <option value="mains">Main Courses</option>
@@ -180,7 +221,11 @@ const MenuPage = () => {
 
         <div className="filter-group">
           <label htmlFor="status-filter">Status</label>
-          <select id="status-filter">
+          <select 
+            id="status-filter" 
+            value={statusFilter} 
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
             <option value="">All Status</option>
             <option value="available">Available</option>
             <option value="unavailable">Unavailable</option>
@@ -193,10 +238,10 @@ const MenuPage = () => {
       </div>
 
       <div className="dish-grid">
-        {dishes.length === 0 ? (
+        {filteredDishes.length === 0 ? (
           <p>No dishes found. Add your first dish!</p>
         ) : (
-          dishes.map((dish) => (
+          filteredDishes.map((dish) => (
             <div className="dish-card" key={dish.id}>
               <div className="dish-image">
                 <img
@@ -221,7 +266,6 @@ const MenuPage = () => {
                     <i className="fas fa-ban"></i> {dish.status === 'available' ? 'Disable' : 'Enable'}
                   </button>
                   <button className="admin-btn btn-delete" onClick={() => handleDeleteDish(dish)}>
-                    {/* Inline SVG Trash Icon */}
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
